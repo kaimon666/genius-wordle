@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Game Menarik</title>
+    <style>
+        :root {
+            --bg-color: #121213;
+            --text-color: #ffffff;
+            --border-color: #3a3a3c;
+            --absent-color: #3a3a3c;
+            --present-color: #b59f3b;
+            --correct-color: #538d4e;
+            --key-bg: #818384;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 100vh;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 500px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            margin: 5px 0;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #game-container {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            grid-gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-gap: 6px;
+        }
+
+        .tile {
+            width: 50px;
+            height: 50px;
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            user-select: none;
+            transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .tile.filled {
+            border-color: #565758;
+            transform: scale(1.05);
+        }
+
+        .tile.absent {
+            background-color: var(--absent-color);
+            border-color: var(--absent-color);
+            color: white;
+        }
+
+        .tile.present {
+            background-color: var(--present-color);
+            border-color: var(--present-color);
+            color: white;
+        }
+
+        .tile.correct {
+            background-color: var(--correct-color);
+            border-color: var(--correct-color);
+            color: white;
+        }
+
+        /* Keyboard Styling */
+        #keyboard {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .key {
+            background-color: var(--key-bg);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 0;
+            font-size: 0.9rem;
+            font-weight: bold;
+            flex: 1;
+            cursor: pointer;
+            text-transform: uppercase;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        .key.wide {
+            flex: 1.5;
+            font-size: 0.75rem;
+        }
+
+        .key:hover {
+            opacity: 0.9;
+        }
+
+        .key.absent {
+            background-color: var(--absent-color);
+        }
+
+        .key.present {
+            background-color: var(--present-color);
+        }
+
+        .key.correct {
+            background-color: var(--correct-color);
+        }
+
+        /* Message Notification Popup */
+        #message-container {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .message {
+            background-color: white;
+            color: black;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            animation: fadeInOut 2s ease forwards;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-10px); }
+            15% { opacity: 1; transform: translateY(0); }
+            85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* Modal / Reset Overlay */
+        #restart-btn {
+            background-color: var(--correct-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: none;
+            margin-top: 10px;
+        }
+
+        #restart-btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Wordle 5-Huruf</h1>
+        <div id="sub-header" style="font-size: 0.85rem; color: #818384;">Tebak kata rahasia dalam 6 kesempatan</div>
+    </header>
+
+    <div id="message-container"></div>
+
+    <div id="game-container"></div>
+
+    <div style="text-align: center;">
+        <button id="restart-btn" onclick="initGame()">Main Lagi</button>
+    </div>
+
+    <div id="keyboard">
+        <div class="keyboard-row">
+            <button class="key" onclick="handleKey('Q')">Q</button>
+            <button class="key" onclick="handleKey('W')">W</button>
+            <button class="key" onclick="handleKey('E')">E</button>
+            <button class="key" onclick="handleKey('R')">R</button>
+            <button class="key" onclick="handleKey('T')">T</button>
+            <button class="key" onclick="handleKey('Y')">Y</button>
+            <button class="key" onclick="handleKey('U')">U</button>
+            <button class="key" onclick="handleKey('I')">I</button>
+            <button class="key" onclick="handleKey('O')">O</button>
+            <button class="key" onclick="handleKey('P')">P</button>
+        </div>
+        <div class="keyboard-row">
+            <button class="key" onclick="handleKey('A')">A</button>
+            <button class="key" onclick="handleKey('S')">S</button>
+            <button class="key" onclick="handleKey('D')">D</button>
+            <button class="key" onclick="handleKey('F')">F</button>
+            <button class="key" onclick="handleKey('G')">G</button>
+            <button class="key" onclick="handleKey('H')">H</button>
+            <button class="key" onclick="handleKey('J')">J</button>
+            <button class="key" onclick="handleKey('K')">K</button>
+            <button class="key" onclick="handleKey('L')">L</button>
+        </div>
+        <div class="keyboard-row">
+            <button class="key wide" onclick="handleKey('ENTER')">Enter</button>
+            <button class="key" onclick="handleKey('Z')">Z</button>
+            <button class="key" onclick="handleKey('X')">X</button>
+            <button class="key" onclick="handleKey('C')">C</button>
+            <button class="key" onclick="handleKey('V')">V</button>
+            <button class="key" onclick="handleKey('B')">B</button>
+            <button class="key" onclick="handleKey('N')">N</button>
+            <button class="key" onclick="handleKey('M')">M</button>
+            <button class="key wide" onclick="handleKey('BACK')">Del</button>
+        </div>
+    </div>
+
+    <script>
+        // Daftar kata rahasia 5 huruf (Campuran Bahasa Indonesia & Inggris populer)
+        const words = [
+            "KAPAL", "LAMPU", "MOGOK", "PIANO", "SURAT", 
+            "MEJA", "BBUAH", "DARAH", "GUDANG", "HITAM",
+            "HOTEL", "KURSI", "LANTAI", "MOTOR", "PACAR",
+            "RADIO", "SOPIR", "TANAH", "UTARA", "WARNA",
+            "APPLE", "BEACH", "CHAIR", "DANCE", "EARTH",
+            "FRUIT", "GRAPE", "HOUSE", "JUICE", "KNIFE",
+            "LEMON", "MOUSE", "NIGHT", "OCEAN", "PAPER",
+            "QUEEN", "RIVER", "SMILE", "TRAIN", "WATER"
+        ];
+
+        let secretWord = "";
+        let currentRow = 0;
+        let currentCol = 0;
+        let board = Array(6).fill("").map(() => Array(5).fill(""));
+        let gameOver = false;
+        let keyStatuses = {}; // Menyimpan warna tombol keyboard
+
+        const gameContainer = document.getElementById("game-container");
+        const restartBtn = document.getElementById("restart-btn");
+
+        function initGame() {
+            gameContainer.innerHTML = "";
+            board = Array(6).fill("").map(() => Array(5).fill(""));
+            currentRow = 0;
+            currentCol = 0;
+            gameOver = false;
+            keyStatuses = {};
+            restartBtn.style.display = "none";
+
+            // Pilih kata rahasia secara acak
+            secretWord = words[Math.floor(Math.random() * words.length)];
+
+            // Buat grid 6x5
+            for (let r = 0; r < 6; r++) {
+                let rowDiv = document.createElement("div");
+                rowDiv.className = "row";
+                for (let c = 0; c < 5; c++) {
+                    let tile = document.createElement("div");
+                    tile.className = "tile";
+                    tile.id = `tile-${r}-${c}`;
+                    rowDiv.appendChild(tile);
+                }
+                gameContainer.appendChild(rowDiv);
+            }
+
+            // Reset tampilan keyboard virtual
+            document.querySelectorAll(".key").forEach(key => {
+                key.className = "key" + (key.innerText === "Enter" || key.innerText === "Del" ? " wide" : "");
+            });
+        }
+
+        function showMessage(text, duration = 2000) {
+            const msgContainer = document.getElementById("message-container");
+            const msg = document.createElement("div");
+            msg.className = "message";
+            msg.innerText = text;
+            msgContainer.appendChild(msg);
+            setTimeout(() => {
+                msg.remove();
+            }, duration);
+        }
+
+        // Listener Keyboard Fisik
+        document.addEventListener("keydown", (e) => {
+            if (gameOver) return;
+            if (e.key === "Enter") {
+                handleKey("ENTER");
+            } else if (e.key === "Backspace") {
+                handleKey("BACK");
+            } else {
+                let key = e.key.toUpperCase();
+                if (/^[A-Z]$/.test(key)) {
+                    handleKey(key);
+                }
+            }
+        });
+
+        function handleKey(key) {
+            if (gameOver) return;
+
+            if (key === "BACK") {
+                if (currentCol > 0) {
+                    currentCol--;
+                    board[currentRow][currentCol] = "";
+                    updateTile(currentRow, currentCol, "");
+                }
+            } else if (key === "ENTER") {
+                if (currentCol < 5) {
+                    showMessage("Kata kurang panjang!");
+                    return;
+                }
+                checkWord();
+            } else {
+                if (currentCol < 5) {
+                    board[currentRow][currentCol] = key;
+                    updateTile(currentRow, currentCol, key);
+                    currentCol++;
+                }
+            }
+        }
+
+        function updateTile(r, c, letter) {
+            const tile = document.getElementById(`tile-${r}-${c}`);
+            tile.innerText = letter;
+            if (letter !== "") {
+                tile.classList.add("filled");
+            } else {
+                tile.classList.remove("filled");
+            }
+        }
+
+        function checkWord() {
+            let guess = board[currentRow].join("");
+
+            let secretLetterCount = {};
+            for (let l of secretWord) {
+                secretLetterCount[l] = (secretLetterCount[l] || 0) + 1;
+            }
+
+            let rowResults = Array(5).fill("absent");
+
+            // Pass 1: Cek huruf yang benar (hijau)
+            for (let i = 0; i < 5; i++) {
+                if (guess[i] === secretWord[i]) {
+                    rowResults[i] = "correct";
+                    secretLetterCount[guess[i]]--;
+                }
+            }
+
+            // Pass 2: Cek huruf yang ada tapi salah posisi (kuning) atau tidak ada (abu-abu)
+            for (let i = 0; i < 5; i++) {
+                if (rowResults[i] !== "correct") {
+                    if (secretWord.includes(guess[i]) && secretLetterCount[guess[i]] > 0) {
+                        rowResults[i] = "present";
+                        secretLetterCount[guess[i]]--;
+                    } else {
+                        rowResults[i] = "absent";
+                    }
+                }
+            }
+
+            // Animasikan dan warnai kotak grid
+            for (let i = 0; i < 5; i++) {
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                setTimeout(() => {
+                    tile.classList.add(rowResults[i]);
+                }, i * 200);
+
+                // Update status keyboard
+                updateKeyColor(guess[i], rowResults[i]);
+            }
+
+            // Cek kondisi Menang atau Kalah
+            if (guess === secretWord) {
+                gameOver = true;
+                setTimeout(() => {
+                    showMessage("Luar Biasa! Kamu Menang! 🎉", 4000);
+                    restartBtn.style.display = "inline-block";
+                }, 1200);
+                return;
+            }
+
+            currentRow++;
+            currentCol = 0;
+
+            if (currentRow === 6) {
+                gameOver = true;
+                setTimeout(() => {
+                    showMessage(`Game Over! Kata yang benar adalah: ${secretWord}`, 5000);
+                    restartBtn.style.display = "inline-block";
+                }, 1200);
+            }
+        }
+
+        function updateKeyColor(letter, status) {
+            // Prioritas warna: correct (hijau) > present (kuning) > absent (abu-abu)
+            const rank = { "correct": 3, "present": 2, "absent": 1 };
+            if (!keyStatuses[letter] || rank[status] > rank[keyStatuses[letter]]) {
+                keyStatuses[letter] = status;
+            }
+
+            // Terapkan ke tombol keyboard virtual
+            const buttons = document.querySelectorAll(".key");
+            buttons.forEach(btn => {
+                if (btn.innerText === letter) {
+                    btn.className = "key " + (btn.innerText.length > 1 ? "wide " : "") + keyStatuses[letter];
+                }
+            });
+        }
+
+        // Mulai game pertama kali
+        initGame();
+    </script>
+</body>
+</html>
